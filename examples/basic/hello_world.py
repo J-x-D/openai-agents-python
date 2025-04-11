@@ -1,5 +1,4 @@
 import asyncio
-
 from agents import Agent, Runner
 
 
@@ -10,10 +9,8 @@ async def main():
     )
 
     result = await Runner.run(agent, "Tell me about recursion in programming.")
-    print(result.final_output)
-    # Function calls itself,
-    # Looping in smaller pieces,
-    # Endless by design.
+
+    print(result.raw_responses)
 
 
 if __name__ == "__main__":

@@ -1,5 +1,15 @@
 from __future__ import annotations
 
+# custom import
+import anthropic
+from openai.types.responses import (
+    ResponseOutputMessage,
+    ResponseOutputText,
+)
+import json
+
+
+# default import
 import asyncio
 import copy
 from dataclasses import dataclass, field
@@ -27,7 +37,12 @@ from .exceptions import (
     ModelBehaviorError,
     OutputGuardrailTripwireTriggered,
 )
-from .guardrail import InputGuardrail, InputGuardrailResult, OutputGuardrail, OutputGuardrailResult
+from .guardrail import (
+    InputGuardrail,
+    InputGuardrailResult,
+    OutputGuardrail,
+    OutputGuardrailResult,
+)
 from .handoffs import Handoff, HandoffInputFilter, handoff
 from .items import ItemHelpers, ModelResponse, RunItem, TResponseInputItem
 from .lifecycle import RunHooks
@@ -146,6 +161,7 @@ class Runner:
             A run result containing all the inputs, guardrail results and the output of the last
             agent. Agents may perform handoffs, so we don't know the specific type of the output.
         """
+
         if hooks is None:
             hooks = RunHooks[Any]()
         if run_config is None:
@@ -180,7 +196,9 @@ class Runner:
                     # Start an agent span if we don't have one. This span is ended if the current
                     # agent changes, or if the agent loop ends.
                     if current_span is None:
-                        handoff_names = [h.agent_name for h in cls._get_handoffs(current_agent)]
+                        handoff_names = [
+                            h.agent_name for h in cls._get_handoffs(current_agent)
+                        ]
                         if output_schema := cls._get_output_schema(current_agent):
                             output_type_name = output_schema.output_type_name()
                         else:
@@ -252,7 +270,8 @@ class Runner:
 
                     if isinstance(turn_result.next_step, NextStepFinalOutput):
                         output_guardrail_results = await cls._run_output_guardrails(
-                            current_agent.output_guardrails + (run_config.output_guardrails or []),
+                            current_agent.output_guardrails
+                            + (run_config.output_guardrails or []),
                             current_agent,
                             turn_result.next_step.output,
                             context_wrapper,
@@ -267,7 +286,9 @@ class Runner:
                             output_guardrail_results=output_guardrail_results,
                         )
                     elif isinstance(turn_result.next_step, NextStepHandoff):
-                        current_agent = cast(Agent[TContext], turn_result.next_step.new_agent)
+                        current_agent = cast(
+                            Agent[TContext], turn_result.next_step.new_agent
+                        )
                         current_span.finish(reset_current=True)
                         current_span = None
                         should_run_agent_start_hooks = True
@@ -492,7 +513,9 @@ class Runner:
         should_run_agent_start_hooks = True
         tool_use_tracker = AgentToolUseTracker()
 
-        streamed_result._event_queue.put_nowait(AgentUpdatedStreamEvent(new_agent=current_agent))
+        streamed_result._event_queue.put_nowait(
+            AgentUpdatedStreamEvent(new_agent=current_agent)
+        )
 
         try:
             while True:
@@ -502,7 +525,9 @@ class Runner:
                 # Start an agent span if we don't have one. This span is ended if the current
                 # agent changes, or if the agent loop ends.
                 if current_span is None:
-                    handoff_names = [h.agent_name for h in cls._get_handoffs(current_agent)]
+                    handoff_names = [
+                        h.agent_name for h in cls._get_handoffs(current_agent)
+                    ]
                     if output_schema := cls._get_output_schema(current_agent):
                         output_type_name = output_schema.output_type_name()
                     else:
@@ -537,8 +562,11 @@ class Runner:
                     streamed_result._input_guardrails_task = asyncio.create_task(
                         cls._run_input_guardrails_with_queue(
                             starting_agent,
-                            starting_agent.input_guardrails + (run_config.input_guardrails or []),
-                            copy.deepcopy(ItemHelpers.input_to_new_input_list(starting_input)),
+                            starting_agent.input_guardrails
+                            + (run_config.input_guardrails or []),
+                            copy.deepcopy(
+                                ItemHelpers.input_to_new_input_list(starting_input)
+                            ),
                             context_wrapper,
                             streamed_result,
                             current_span,
@@ -583,12 +611,16 @@ class Runner:
                         )
 
                         try:
-                            output_guardrail_results = await streamed_result._output_guardrails_task
+                            output_guardrail_results = (
+                                await streamed_result._output_guardrails_task
+                            )
                         except Exception:
                             # Exceptions will be checked in the stream_events loop
                             output_guardrail_results = []
 
-                        streamed_result.output_guardrail_results = output_guardrail_results
+                        streamed_result.output_guardrail_results = (
+                            output_guardrail_results
+                        )
                         streamed_result.final_output = turn_result.next_step.output
                         streamed_result.is_complete = True
                         streamed_result._event_queue.put_nowait(QueueCompleteSentinel())
@@ -644,7 +676,9 @@ class Runner:
         handoffs = cls._get_handoffs(agent)
         model = cls._get_model(agent, run_config)
         model_settings = agent.model_settings.resolve(run_config.model_settings)
-        model_settings = RunImpl.maybe_reset_tool_choice(agent, tool_use_tracker, model_settings)
+        model_settings = RunImpl.maybe_reset_tool_choice(
+            agent, tool_use_tracker, model_settings
+        )
 
         final_response: ModelResponse | None = None
 
@@ -701,7 +735,9 @@ class Runner:
             tool_use_tracker=tool_use_tracker,
         )
 
-        RunImpl.stream_step_result_to_queue(single_step_result, streamed_result._event_queue)
+        RunImpl.stream_step_result_to_queue(
+            single_step_result, streamed_result._event_queue
+        )
         return single_step_result
 
     @classmethod
@@ -734,7 +770,9 @@ class Runner:
         output_schema = cls._get_output_schema(agent)
         handoffs = cls._get_handoffs(agent)
         input = ItemHelpers.input_to_new_input_list(original_input)
-        input.extend([generated_item.to_input_item() for generated_item in generated_items])
+        input.extend(
+            [generated_item.to_input_item() for generated_item in generated_items]
+        )
 
         new_response = await cls._get_new_response(
             agent,
@@ -851,7 +889,9 @@ class Runner:
 
         guardrail_tasks = [
             asyncio.create_task(
-                RunImpl.run_single_output_guardrail(guardrail, agent, agent_output, context)
+                RunImpl.run_single_output_guardrail(
+                    guardrail, agent, agent_output, context
+                )
             )
             for guardrail in guardrails
         ]
@@ -891,18 +931,65 @@ class Runner:
     ) -> ModelResponse:
         model = cls._get_model(agent, run_config)
         model_settings = agent.model_settings.resolve(run_config.model_settings)
-        model_settings = RunImpl.maybe_reset_tool_choice(agent, tool_use_tracker, model_settings)
+        model_settings = RunImpl.maybe_reset_tool_choice(
+            agent, tool_use_tracker, model_settings
+        )
 
-        new_response = await model.get_response(
-            system_instructions=system_prompt,
-            input=input,
-            model_settings=model_settings,
-            tools=all_tools,
-            output_schema=output_schema,
-            handoffs=handoffs,
-            tracing=get_model_tracing_impl(
-                run_config.tracing_disabled, run_config.trace_include_sensitive_data
+        #! TODO: change here
+        client = anthropic.Anthropic()
+
+        logger.info("Calling Claude 3 API instead of OpenAI API")
+        print("Calling Claude 3 API instead of OpenAI API")
+
+        message = client.messages.create(
+            model="claude-3-7-sonnet-20250219",
+            max_tokens=1024,
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "document",
+                            "source": {
+                                "type": "text",
+                                "media_type": "text/plain",
+                                "data": "The grass is green. The sky is blue.",
+                            },
+                            "title": "My Document",
+                            "context": "This is a trustworthy document.",
+                            "citations": {"enabled": True},
+                        },
+                        {"type": "text", "text": "What color is the grass and sky?"},
+                    ],
+                }
+            ],
+        )
+
+        print(json.dumps(message.model_dump(), indent=2))
+
+        new_response = ModelResponse(
+            output=[
+                ResponseOutputMessage(
+                    id="abc",  # TODO: change
+                    content=[
+                        ResponseOutputText(
+                            annotations=[],  # Required field
+                            text=message.content[0].text,
+                            type="output_text",  # This must match your current model
+                        ),
+                    ],
+                    role="assistant",
+                    status="completed",
+                    type="message",
+                )
+            ],
+            usage=Usage(
+                requests=1,
+                input_tokens=message.usage.input_tokens,
+                output_tokens=message.usage.output_tokens,
+                total_tokens=message.usage.input_tokens + message.usage.output_tokens,
             ),
+            referenceable_id=message.id,
         )
 
         context_wrapper.usage.add(new_response.usage)

@@ -134,3 +134,6 @@ markers = [
 
 [tool.inline-snapshot]
 format-command = "ruff format --stdin-filename {filename}"
+
+[tool.hatch.build]
+sources = ["src"]
