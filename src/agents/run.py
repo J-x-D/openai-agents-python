@@ -2,11 +2,8 @@ from __future__ import annotations
 
 # custom import
 import anthropic
-from openai.types.responses import (
-    ResponseOutputMessage,
-    ResponseOutputText,
-)
 import json
+from .items import CustomResponseOutputMessage, CustomResponseOutputText
 
 
 # default import
@@ -939,7 +936,6 @@ class Runner:
         client = anthropic.Anthropic()
 
         logger.info("Calling Claude 3 API instead of OpenAI API")
-        print("Calling Claude 3 API instead of OpenAI API")
 
         message = client.messages.create(
             model="claude-3-7-sonnet-20250219",
@@ -959,26 +955,24 @@ class Runner:
                             "context": "This is a trustworthy document.",
                             "citations": {"enabled": True},
                         },
-                        {"type": "text", "text": "What color is the grass and sky?"},
+                        {"type": "text", "text": input[0]["content"]},
                     ],
                 }
             ],
         )
 
-        print(json.dumps(message.model_dump(), indent=2))
-        print("Claude 3 Citations:", message.content[1].citations)
-
         new_response = ModelResponse(
             output=[
-                ResponseOutputMessage(
+                CustomResponseOutputMessage(
                     id="abc",
                     content=[
-                        ResponseOutputText(
-                            annotations=[],
-                            text=message.content[0].text,
-                            type="output_text",
-                            citations=message.content[1].citations,
-                        ),
+                        CustomResponseOutputText(
+                            annotations=[],  # Assuming still required by your model
+                            text=content_item.text,
+                            type="output_text",  # Keep consistent with your model
+                            citations=getattr(content_item, "citations", None),
+                        )
+                        for content_item in message.content
                     ],
                     role="assistant",
                     status="completed",

@@ -8,15 +8,20 @@ async def main():
         instructions="You should check your knowledge for accuracy and cite factual information.",
     )
 
-    query = "What is the capital of France and what is its population? How tall is the Eiffel Tower?"
+    query = "What is the color of the sky?"
 
     result = await Runner.run(agent, query)
 
-    print("Result:")
-    print(result)
+    for message in result.raw_responses[0].output:
+        combined_text = ""
+        for item in message.content:
+            combined_text += item.text
+            citations = getattr(item, "citations", None)
+            if citations:
+                for citation in citations:
+                    combined_text += f" [{citation.document_title}]"
 
-    print("Raw responses:")
-    print(result.raw_responses[0].output[0].content[0].citations)
+    print("Response:", combined_text.strip())
 
 
 if __name__ == "__main__":
