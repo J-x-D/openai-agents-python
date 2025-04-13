@@ -966,16 +966,18 @@ class Runner:
         )
 
         print(json.dumps(message.model_dump(), indent=2))
+        print("Claude 3 Citations:", message.content[1].citations)
 
         new_response = ModelResponse(
             output=[
                 ResponseOutputMessage(
-                    id="abc",  # TODO: change
+                    id="abc",
                     content=[
                         ResponseOutputText(
-                            annotations=[],  # Required field
+                            annotations=[],
                             text=message.content[0].text,
-                            type="output_text",  # This must match your current model
+                            type="output_text",
+                            citations=message.content[1].citations,
                         ),
                     ],
                     role="assistant",
